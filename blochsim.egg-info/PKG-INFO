@@ -1,0 +1,5 @@
+Metadata-Version: 2.4
+Name: blochsim
+Version: 0.1.0
+Summary: Bloch equation simulator for neural ODE experiments
+Requires-Python: >=3.9
