@@ -145,6 +145,211 @@ class BlochSimulator:
         ])
         return B1_vec, envelope
     
+    import numpy as np
+
+    # ----------------------- Helpers (inside the class) -----------------------
+
+    def _duration_from_envelope_avg(self, angle, B1_peak, env_of_tau, n=4096):
+        """
+        Numerically compute the duration that yields the requested flip angle.
+
+        We assume an envelope defined on tau in [0,1] with peak 1.0:
+            B1(t) = B1_peak * env_of_tau(t / duration)
+        => area = ∫ B1 dt = B1_peak * duration * ∫_0^1 env(τ) dτ
+        Flip angle: angle = gamma * area
+
+        So: duration = angle / (gamma * B1_peak * avg_env),
+            where avg_env = ∫_0^1 env(τ) dτ
+        """
+        tau = np.linspace(0.0, 1.0, n, endpoint=False) + 0.5 / n
+        env_vals = env_of_tau(tau)
+        avg_env = np.trapz(env_vals, tau)  # integral over [0,1]
+        avg_env = float(max(avg_env, 1e-12))  # guard
+        return angle / (self.gamma * B1_peak * avg_env)
+
+    # -------------------- 1) Gaussian pulse (RF_pulse_gaussian) --------------------
+
+    def RF_pulse_gaussian(self, angle: float, phase: float, B1_amplitude: float = 4.0,
+                        sigma_frac: float = 0.20):
+        """
+        Apply a Gaussian-envelope RF pulse with flip-angle normalization.
+
+        angle: flip angle [rad]
+        phase: RF carrier phase [rad]
+        B1_amplitude: peak B1 (envelope peak = 1.0 -> peak field = B1_amplitude)
+        sigma_frac: controls width of the Gaussian relative to duration
+                    (σ in units of half-duration; 0.2 is a common smooth choice)
+        """
+        self.B1 = B1_amplitude
+        self.B1_freq = self.gamma * self.B0
+        self.phi1 = phase
+
+        # envelope on τ ∈ [0,1], centered at 0.5
+        def env_of_tau(tau):
+            # convert sigma_frac (fraction of half-duration) to σ on τ-domain
+            # half-duration in τ is 0.5, so σ_τ = sigma_frac / 0.5
+            sigma_tau = sigma_frac / 0.5
+            return np.exp(-0.5 * ((tau - 0.5) / sigma_tau) ** 2)
+
+        duration = self._duration_from_envelope_avg(angle, B1_amplitude, env_of_tau)
+
+        self.RF_active = True
+        self.RF_time_left = duration
+        self.RF_area_left = angle
+        self.RF_func = lambda t: self._RF_gaussian(t, duration, sigma_frac)
+
+    def _RF_gaussian(self, t: float, duration: float, sigma_frac: float):
+        """Return (B1_vec, envelope) for Gaussian envelope at time t."""
+        tau = np.clip(t / duration, 0.0, 1.0)
+        sigma_tau = sigma_frac / 0.5
+        env = float(np.exp(-0.5 * ((tau - 0.5) / sigma_tau) ** 2))
+
+        phase = self.B1_freq * t - self.phi1
+        B1x = self.B1 * env * np.cos(phase)
+        B1y = -self.B1 * env * np.sin(phase)
+        B1_vec = np.array([B1x, B1y, 0.0], dtype=float)
+        return B1_vec, self.B1 * env
+
+    # --------------- 2) Hamming-windowed sinc (RF_pulse_windowed_sinc) ---------------
+
+    def RF_pulse_windowed_sinc(self, angle: float, phase: float, B1_amplitude: float = 4.0,
+                            n_lobes: int = 4):
+        """
+        Apply a Hamming-windowed sinc RF pulse (cleaner spectrum than plain sinc).
+
+        angle: flip angle [rad]
+        phase: RF carrier phase [rad]
+        B1_amplitude: peak B1 (after windowing; peak env is normalized to 1)
+        n_lobes: number of lobes on each side of the center
+        """
+        self.B1 = B1_amplitude
+        self.B1_freq = self.gamma * self.B0
+        self.phi1 = phase
+
+        # Continuous-time Hamming window on τ ∈ [0,1]
+        def window_hamming(tau):
+            return 0.54 - 0.46 * np.cos(2 * np.pi * tau)
+
+        def env_of_tau(tau):
+            # Map τ∈[0,1] to x∈[-n_lobes, n_lobes]
+            x = (tau - 0.5) * 2.0 * n_lobes
+            sinc = np.sinc(x)  # np.sinc uses sin(πx)/(πx); OK up to scale
+            env = sinc * window_hamming(tau)
+            # normalize to peak 1.0 so B1_amplitude is actual peak
+            peak = np.max(np.abs(env))
+            return env / (peak + 1e-12)
+
+        duration = self._duration_from_envelope_avg(angle, B1_amplitude, env_of_tau)
+
+        self.RF_active = True
+        self.RF_time_left = duration
+        self.RF_area_left = angle
+        self.RF_func = lambda t: self._RF_windowed_sinc(t, duration, n_lobes)
+
+    def _RF_windowed_sinc(self, t: float, duration: float, n_lobes: int):
+        """Return (B1_vec, envelope) for Hamming-windowed sinc at time t."""
+        tau = np.clip(t / duration, 0.0, 1.0)
+        x = (tau - 0.5) * 2.0 * n_lobes
+        sinc = np.sinc(x)
+        window = 0.54 - 0.46 * np.cos(2 * np.pi * tau)
+        env = sinc * window
+        env /= (np.max([abs(env), 1e-12]))  # tiny guard if called at boundaries
+
+        phase = self.B1_freq * t - self.phi1
+        B1x = self.B1 * env * np.cos(phase)
+        B1y = -self.B1 * env * np.sin(phase)
+        B1_vec = np.array([B1x, B1y, 0.0], dtype=float)
+        return B1_vec, self.B1 * env
+
+    # ------------------ 3) Trapezoidal (ramps) (RF_pulse_trapezoid) ------------------
+
+    def RF_pulse_trapezoid(self, angle: float, phase: float, B1_amplitude: float = 4.0,
+                        ramp_frac: float = 0.10):
+        """
+        Apply a trapezoidal RF pulse with linear rise/fall ramps.
+
+        angle: flip angle [rad]
+        phase: RF carrier phase [rad]
+        B1_amplitude: plateau peak
+        ramp_frac: fraction of the duration used for each ramp (0–0.5)
+        """
+        ramp_frac = float(np.clip(ramp_frac, 0.0, 0.49))
+        self.B1 = B1_amplitude
+        self.B1_freq = self.gamma * self.B0
+        self.phi1 = phase
+
+        def env_of_tau(tau):
+            # piecewise linear: rise -> flat -> fall on τ∈[0,1]
+            r = ramp_frac
+            env = np.empty_like(tau)
+            # rise
+            rise = tau < r
+            env[rise] = tau[rise] / max(r, 1e-12)
+            # flat
+            flat = (tau >= r) & (tau <= 1.0 - r)
+            env[flat] = 1.0
+            # fall
+            fall = tau > 1.0 - r
+            env[fall] = (1.0 - tau[fall]) / max(r, 1e-12)
+            return env
+
+        duration = self._duration_from_envelope_avg(angle, B1_amplitude, env_of_tau)
+
+        self.RF_active = True
+        self.RF_time_left = duration
+        self.RF_area_left = angle
+        self.RF_func = lambda t: self._RF_trapezoid(t, duration, ramp_frac)
+
+    def _RF_trapezoid(self, t: float, duration: float, ramp_frac: float):
+        """Return (B1_vec, envelope) for a trapezoid at time t."""
+        tau = np.clip(t / duration, 0.0, 1.0)
+        r = ramp_frac
+        if tau < r:
+            env = tau / max(r, 1e-12)
+        elif tau <= 1.0 - r:
+            env = 1.0
+        else:
+            env = (1.0 - tau) / max(r, 1e-12)
+
+        phase = self.B1_freq * t - self.phi1
+        B1x = self.B1 * env * np.cos(phase)
+        B1y = -self.B1 * env * np.sin(phase)
+        B1_vec = np.array([B1x, B1y, 0.0], dtype=float)
+        return B1_vec, self.B1 * env
+
+
+
+    def random_fourier_pulse(T: int, dt: float, A: float, n_terms: int = 5):
+        """
+        Generate a random composite pulse as a sum of sinusoids.
+
+        Parameters
+        ----------
+        T : int
+            Number of samples.
+        dt : float
+            Time step (seconds).
+        A : float
+            Overall amplitude scaling.
+        n_terms : int
+            Number of random harmonic components to sum.
+
+        Returns
+        -------
+        np.ndarray
+            Random, smooth RF envelope normalized to amplitude A.
+        """
+        t = np.arange(T) * dt
+        y = np.zeros_like(t)
+        for _ in range(n_terms):
+            f = np.random.uniform(100, 5000)  # random frequency in Hz
+            phi = np.random.uniform(0, 2 * np.pi)
+            y += np.sin(2 * np.pi * f * t + phi)
+        y /= np.max(np.abs(y)) + 1e-8
+        return (A * y).astype(np.float32)
+
+
+
     def apply_gradient(self, phase_diff: float, direction_angle: float = 0.0):
         """Apply gradient pulse"""
         grad_scale = 11  # From o.g. code

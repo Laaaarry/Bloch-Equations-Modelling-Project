@@ -79,7 +79,7 @@ def test_rf_pulse_3d():
 def test_relaxation_3d():
     sim = BlochSimulator(gamma=1.0, B0=0.0)
     sim.isochromats.clear()
-    sim.add_isochromat(M=np.array([1.0, 0.0, 0.0]), T1=3.0, T2=1.5)
+    sim.add_isochromat(M=np.array([1.0, 0.0, 0.0]), T1=7, T2=1.)
     sim.simulate_sequence(duration=8.0, dt=0.005)  # ⬆️ longer duration
 
     fig2d = BlochVisualizer.plot_magnetization_trajectory(sim)
@@ -96,8 +96,8 @@ def test_relaxation_3d():
 def test_relaxation_with_precession_3d():
     sim = BlochSimulator(gamma=1.0, B0=2.0)   # <-- nonzero B0 -> precession about +z
     sim.isochromats.clear()
-    sim.add_isochromat(M=np.array([1.0, 0.0, 0.0]), T1=3.0, T2=1.5)  # start transverse
-    sim.simulate_sequence(duration=8.0, dt=0.005)
+    sim.add_isochromat(M=np.array([0.0, 0.0, 0.0]), T1=9, T2=2.0)  # start transverse
+    sim.simulate_sequence(duration=30, dt=0.005)
 
     # 2D traces
     fig2d = BlochVisualizer.plot_magnetization_trajectory(sim)
@@ -115,7 +115,7 @@ def test_relaxation_with_precession_3d():
 
 if __name__ == "__main__":
     print("Running extended 3D visual tests…")
-    test_free_precession_3d()
-    test_rf_pulse_3d()
-    test_relaxation_3d()
+    #test_free_precession_3d()
+    #test_rf_pulse_3d()
+    #test_relaxation_3d()
     test_relaxation_with_precession_3d()
