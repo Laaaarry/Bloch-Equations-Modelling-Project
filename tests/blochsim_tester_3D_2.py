@@ -157,5 +157,4 @@ def run_case(name: str):
     return sim
 
 if __name__ == "__main__":
-    # quick demo: change the name to try others
     run_case("relaxation_plus_precession")
