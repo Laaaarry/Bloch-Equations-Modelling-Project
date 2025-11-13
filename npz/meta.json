@@ -1,0 +1,16 @@
+{
+  "T": 1024,
+  "dt": 0.001,
+  "n_train": 4000,
+  "n_val": 500,
+  "n_test": 500,
+  "seed": 2025,
+  "per_sample_t": false,
+  "rf_families": [
+    "rect",
+    "sinc",
+    "gaussian",
+    "windowed_sinc",
+    "trapezoid"
+  ]
+}
