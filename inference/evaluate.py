@@ -7,7 +7,6 @@ import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 from tqdm.auto import tqdm
 
-# --- Make project root importable when running this file directly ---
 ROOT = Path(__file__).resolve().parents[1]  # .. = Bloch-Equations-Modelling-Project
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
@@ -15,9 +14,7 @@ if str(ROOT) not in sys.path:
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-# ==========================
-# 1. Dataset wrapper (test npz)
-# ==========================
+
 class BlochDataset(Dataset):
     """
     Dataset wrapper for Bloch .npz files with keys:
@@ -281,10 +278,11 @@ def evaluate_against_analytic(
 # 6. Optional CLI demo
 # ==========================
 if __name__ == "__main__":
-    from models.lightweight_ode_rk4 import NeuralBlochRK4
+    #from models.lightweight_ode_rk4 import NeuralBlochRK4
+    from models.neural_bloch_gru import NeuralBlochGRU
 
-    #print("Evaluating on test set with NeuralBlochRK4")
-    #evaluate_on_test(NeuralBlochRK4, hidden=64)
+    print("Evaluating on test set with NeuralBlochGRU")
+    evaluate_on_test(NeuralBlochGRU, ckpt_path=ROOT / "checkpoints" / "best_gru.pt", hidden=64)
 
-    print("\nEvaluating vs analytic Bloch with NeuralBlochRK4")
-    evaluate_against_analytic(NeuralBlochRK4, hidden=64)
+    print("\nEvaluating vs analytic Bloch with NeuralBlochGRU")
+    evaluate_against_analytic(NeuralBlochGRU, ckpt_path=ROOT / "checkpoints" / "best_gru.pt", hidden=64)

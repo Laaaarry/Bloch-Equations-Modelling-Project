@@ -10,9 +10,9 @@ ROOT = Path(__file__).resolve().parents[1]  # .. = Bloch-Equations-Modelling-Pro
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from training.loop import fit
+from training.loop_pinn import fit
 #from models.lightweight_ode_rk4 import NeuralBlochRK4
-from models.neural_bloch_gru import NeuralBlochGRU
+from models.neural_pinn import BlochPINN
 
 # ==========================
 # 1. SIMPLE CONFIG SECTION
@@ -22,13 +22,13 @@ TRAIN_NPZ = DATA_DIR / "train.npz"
 VAL_NPZ   = DATA_DIR / "val.npz"
 
 BATCH_SIZE = 64
-EPOCHS     = 80
+EPOCHS     = 300
 LR         = 1e-3
 WD         = 1e-6
 HIDDEN     = 64
 
-CKPT_PATH    = ROOT / "checkpoints" / "best_gru.pt"
-METRICS_PATH = ROOT / "checkpoints" / "metrics_gru.csv"
+CKPT_PATH    = ROOT / "checkpoints" / "best_pinn.pt"
+METRICS_PATH = ROOT / "checkpoints" / "metrics_pinn.csv"
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -93,7 +93,7 @@ def run_training():
     t_shared = train_ds.t.to(DEVICE)
 
     # --- model ---
-    model = NeuralBlochGRU(hidden=HIDDEN).to(DEVICE)
+    model = BlochPINN(hidden=HIDDEN).to(DEVICE)
 
 
     print("Starting training...")
