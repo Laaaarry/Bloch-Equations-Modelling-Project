@@ -7,46 +7,65 @@ from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 
 
-def train_one_epoch(model, loader, t_shared, optimizer, criterion, device, epoch=None, total_epochs=None):
+def train_one_epoch(
+    model,
+    loader,
+    t_shared,
+    optimizer,
+    criterion,
+    device,
+    epoch=None,
+    total_epochs=None,
+    lambda_phys: float = 1.0,  # NEW: weight for physics loss
+):
     model.train()
     total_loss, total_elems = 0.0, 0
     total_comp = torch.zeros(3, device=device)  # Mx, My, Mz
 
     pbar = tqdm(loader, desc=f"Epoch {epoch+1}/{total_epochs} [Train]", leave=False, ncols=90)
     for batch in pbar:
-        # move to GPU/CPU
         y, y0, u, p = [batch[k].to(device, non_blocking=True) for k in ("y", "y0", "u", "p")]
 
         optimizer.zero_grad()
-        yhat = model(y0, t_shared, u, p)  # (B,T,3)
-        loss = criterion(yhat, y)        # scalar MSE over all components
 
-        # Backprop + step
+        # --- supervised term ---
+        yhat = model(y0, t_shared, u, p)     # (B,T,3)
+        data_loss = criterion(yhat, y)       # supervised MSE
+
+        # --- physics-informed term (unsupervised) ---
+        # Only works for models that implement physics_residual
+        if hasattr(model, "physics_residual"):
+            residual = model.physics_residual(y0, t_shared, u, p)  # (B,T,3)
+            physics_loss = torch.mean(residual ** 2)
+        else:
+            physics_loss = torch.tensor(0.0, device=device)
+
+        # --- total loss ---
+        loss = data_loss + lambda_phys * physics_loss
+
         loss.backward()
         grad_norm = nn.utils.clip_grad_norm_(model.parameters(), 1.0)
         optimizer.step()
 
-        # Accumulate scalar loss (sum over elements)
+        # logging: you can choose to log data_loss or total loss
         batch_elems = y.numel()  # B*T*3
-        total_loss += loss.item() * batch_elems
+        total_loss += data_loss.item() * batch_elems
         total_elems += batch_elems
 
-        # Per-component MSE accumulation
-        diff2 = (yhat - y) ** 2          # (B,T,3)
-        total_comp += diff2.sum(dim=(0, 1))  # sum over B,T -> (3,)
+        diff2 = (yhat - y) ** 2
+        total_comp += diff2.sum(dim=(0, 1))
 
-        pbar.set_postfix({"batch_loss": f"{loss.item():.4e}"})
+        pbar.set_postfix({
+            "data": f"{data_loss.item():.4e}",
+            "phys": f"{physics_loss.item():.4e}",
+        })
 
-    # Mean scalar loss over all elements
     mean_loss = total_loss / max(total_elems, 1)
-
-    # Mean per-component loss over all elements (Mx, My, Mz)
-    # Divide by number of (B*T) positions; each has 3 comps, so we normalize by B*T, not B*T*3
-    # total_comp currently stores sum over B,T; shape (3,)
     num_positions = total_elems / 3.0 if total_elems > 0 else 1.0
     mean_comp = total_comp / num_positions  # (3,)
 
     return mean_loss, mean_comp.detach().cpu()
+
 
 
 @torch.no_grad()
