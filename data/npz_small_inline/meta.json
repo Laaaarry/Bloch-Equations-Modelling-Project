@@ -1,0 +1,13 @@
+{
+  "T": 128,
+  "dt": 0.001,
+  "n_train": 5,
+  "n_val": 1,
+  "n_test": 1,
+  "seed": 123,
+  "per_sample_t": false,
+  "rf_families": [
+    "rect",
+    "sinc"
+  ]
+}

@@ -33,13 +33,27 @@ def ensure_outdir(path: str | Path) -> Path:
 # -------------------------- Parameter Sampling ------------------------- #
 
 def draw_params(rng: np.random.Generator) -> Dict[str, float]:
-    return dict(
-        T1=float(rng.uniform(1.5, 4.0)),
-        T2=float(rng.uniform(0.6, 2.0)),
-        dB0=float(rng.uniform(-0.5, 0.5)),
-        B0=float(rng.uniform(1.5, 3.0)),
-        gamma=1.0,
-    )
+    """
+    Sample Bloch parameters in MRI-like ranges, but still friendly for ML.
+
+    T1:   0.5–2.0 s  (roughly gray/white matter, muscle, etc.)
+    T2:   5–30% of T1 (so T2 < T1 and not crazy-long)
+    B0:   1.5–3.0 T  (clinical scanners)
+    dB0:  small fraction of B0 (≈ ±1%)
+    gamma: kept at 1.0 (scaled units)
+    """
+    T1 = float(rng.uniform(0.5, 2.0))            # seconds
+    T2_min = 0.05 * T1
+    T2_max = 0.30 * T1
+    T2 = float(rng.uniform(T2_min, T2_max))
+
+    B0 = float(rng.uniform(1.5, 3.0))
+    dB0 = float(rng.uniform(-0.01 * B0, 0.01 * B0))  # ±1% inhomogeneity
+
+    gamma = 1.0  # keep scaled; use physical gamma only if you also rescale dt, B1, etc.
+
+    return dict(T1=T1, T2=T2, dB0=dB0, B0=B0, gamma=gamma)
+
 
 
 # --------------------------- Control Programming ------------------------ #
@@ -50,14 +64,39 @@ def program_controls_and_run(
     dt: float,
     rng: np.random.Generator,
     rf_families: tuple[str, ...] = ("rect","sinc","gaussian","windowed_sinc","trapezoid"),
+    p_easy: float = 0.8,  # 80% easy, 20% harder cases
 ) -> tuple[np.ndarray, str]:
+    """
+    Generate control sequence u[t] = [B1x, B1y, Gx, Gy] and run the simulation.
+    Most cases are 'easy' (simpler RF + no gradients), some are 'hard' (more exotic RF + gradients).
+    """
     u = np.zeros((T, 4), dtype=np.float32)
 
-    flip  = rng.uniform(math.radians(10), math.radians(120))
-    phase = rng.uniform(0, 2 * math.pi)
-    B1amp = rng.uniform(2.5, 5.0)
+    # Decide difficulty of this sample
+    is_easy = rng.random() < p_easy
 
-    rf_type = rng.choice(rf_families)
+    phase = rng.uniform(0.0, 2.0 * math.pi)
+
+    if is_easy:
+        # Easier: smaller flip, moderate amplitude, simple RF types
+        flip  = rng.uniform(math.radians(5), math.radians(60))
+        B1amp = rng.uniform(2.0, 4.0)
+        rf_type = rng.choice(("rect", "trapezoid"))
+
+        # No gradients for easy cases
+        sim.Gx = 0.0
+        sim.Gy = 0.0
+    else:
+        # Harder: larger flips, any RF family
+        flip  = rng.uniform(math.radians(5), math.radians(150))
+        B1amp = rng.uniform(1.0, 6.0)
+        rf_type = rng.choice(rf_families)
+
+        # Add some gradient dephasing (tune range as you like)
+        phi   = rng.uniform(0.0, math.pi)
+        theta = rng.uniform(0.0, 2.0 * math.pi)
+        sim.apply_gradient(phase_diff=phi, direction_angle=theta)
+
     dispatch = {
         "rect":          lambda: sim.RF_pulse_rect(angle=flip, phase=phase, B1_amplitude=B1amp),
         "sinc":          lambda: sim.RF_pulse_sinc(angle=flip, phase=phase, B1_amplitude=B1amp, n_lobes=4),
@@ -69,10 +108,7 @@ def program_controls_and_run(
         raise ValueError(f"Unknown rf_type '{rf_type}'. Supported: {list(dispatch.keys())}")
     dispatch[rf_type]()
 
-    phi   = rng.uniform(0.0, math.pi)
-    theta = rng.uniform(0.0, 2 * math.pi)
-    sim.apply_gradient(phase_diff=phi, direction_angle=theta)
-
+    # Run simulation while recording controls
     for t_idx in range(T):
         B1x = sim.B1 * math.cos(sim.B1_freq * sim.time - sim.phi1)
         B1y = -sim.B1 * math.sin(sim.B1_freq * sim.time - sim.phi1)
@@ -82,8 +118,10 @@ def program_controls_and_run(
         u[t_idx, 3] = sim.Gy
         sim.step(dt)
 
-    sim.Gx = 0.0; sim.Gy = 0.0
+    sim.Gx = 0.0
+    sim.Gy = 0.0
     return u, rf_type
+
 
 
 # --------------------------- Single Rollout ----------------------------- #
