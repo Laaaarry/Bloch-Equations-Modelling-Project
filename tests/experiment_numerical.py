@@ -53,6 +53,19 @@ def rk4_step(f, t, M, dt, *args):
     k4 = f(t + dt, M + dt*k3, *args)
     return M + (dt/6)*(k1 + 2*k2 + 2*k3 + k4)
 
+def rkf_step(f, t, M, dt, *args):
+    k1 = f(t, M, *args)
+    k2 = f(t + dt/4, M + dt*k1/4, *args)
+    k3 = f(t + 3*dt/8, (M + 3*dt*k1/32 + 9*dt*k2/32), *args)
+    k4 = f(t + 12*dt/13, (M + 1932*dt*k1/2197 - 7200*dt*k2/2197 + 7296*dt*k3/2197), *args)
+    k5 = f(t + dt, (M + 439*dt*k1/216 - 8*dt*k2 + 3680*dt*k3/513 - 845*dt*k4/4104), *args)
+    k6 = f(t + dt/2, (M - 8*dt*k1/27 + 2*dt*k2 - 3544*dt*k3/2565 + 1859*dt*k4/4104 -11*dt*k5/40), *args)
+
+    order_5 = M + dt*(16*k1/135 + 6656*k3/12825 + 28561*k4/56430 - 9*k5/50 + 2*k6/55)
+    order_4 = M + dt*(25*k1/216 + 1408*k3/2565 + 2197*k4/4104 - 1*k5/5)
+    err = np.abs(order_5-order_4) #error to calculate new time step
+
+    return order_4, err
 
 def simulate_bloch(method, M0_vec, t_max, dt, gamma, T1, T2, M0, B):
     #Simulate Bloch equations using Euler or RK4.
@@ -70,3 +83,25 @@ def simulate_bloch(method, M0_vec, t_max, dt, gamma, T1, T2, M0, B):
         M[i+1] = method(bloch_ode, t, M[i], dt, gamma, T1, T2, M0, B)
     return t_points, M
 
+def bloch_rfk(method, M0_vec, t_max, dt, gamma, T1, T2, M0, B, err_tol= 1e-12):
+    #Simulate Bloch equations using RKF
+    t_cur = 0
+    M_cur = M0_vec
+
+    t_points = [t_cur]
+    M_points = [M0_vec]
+    reject = 0 
+
+    while t_cur < t_max: 
+        M_try, err = method(bloch_ode, t_cur, M_cur, dt, gamma, T1, T2, M0, B)
+        err_cur = np.max(err)
+        if err_cur <= err_tol:
+            t_cur += dt
+            M_cur = M_try
+            t_points.append(t_cur)
+            M_points.append(M_cur)
+        reject +=1 
+        if err_cur != 0:
+            dt = min(0.9*dt*(err_tol/err_cur)**0.2, t_max-t_cur) #calculate new step size 
+    print(reject)
+    return np.array(t_points), np.array(M_points)
