@@ -83,7 +83,7 @@ def simulate_bloch(method, M0_vec, t_max, dt, gamma, T1, T2, M0, B):
         M[i+1] = method(bloch_ode, t, M[i], dt, gamma, T1, T2, M0, B)
     return t_points, M
 
-def bloch_rfk(method, M0_vec, t_max, dt, gamma, T1, T2, M0, B, err_tol= 1e-12):
+def bloch_rkf(method, M0_vec, t_max, dt, gamma, T1, T2, M0, B, err_tol= 1e-12):
     #Simulate Bloch equations using RKF
     t_cur = 0
     M_cur = M0_vec
