@@ -2,17 +2,16 @@ import experiment_numerical as exp
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
-from tqdm.auto import tqdm
 
 def analytical_soln_simple(M_init, t, gamma, T1, T2, M0, B0, dB0):
-    """
+    '''
     Analytic Bloch solution for simple case:
       - no RF or gradients (u = 0)
       - constant B0 along z
       - relaxation with T1, T2
       - precession around z: omega = gamma * (B0 + dB0)
+    '''
 
-    """
     Mx0, My0, Mz0 = M_init
 
     Mxy0 = np.sqrt(Mx0**2 + My0**2 + 1e-12)
@@ -24,6 +23,7 @@ def analytical_soln_simple(M_init, t, gamma, T1, T2, M0, B0, dB0):
     omega = -gamma * (B0 + dB0)
     phase = omega * t + phi0
 
+    # component solutions
     Mx = Mxy0 * E2 * np.cos(phase)
     My = Mxy0 * E2 * np.sin(phase)
     Mz = M0 + (Mz0 - M0) * E1
@@ -32,20 +32,32 @@ def analytical_soln_simple(M_init, t, gamma, T1, T2, M0, B0, dB0):
     return M
 
 def gen_test_case(test_id = 0):
+    '''
+    Generates test cases for analytical and numerical solution
+
+    Parameters
+    ----------
+        test_id -> int: ID of test randomly generated test case
+
+    '''
 
     np.random.seed(123 + test_id)
 
-    # physical parameters
-    M_init = np.random.randn(3)
-    M_init = M_init / (np.linalg.norm(M_init) + 1e-12)
-    t_max = 10
-    dt = 0.1
-    gamma = 1 # rad/s/T for proton
-    T1 = np.random.uniform(2, 5.0)
-    T2 = np.random.uniform(0.6, 2.0)
-    M0 = 1.0 
-    B0  = np.random.uniform(2.0, 4.0)
-    dB0 = np.random.uniform(-0.1, 0.1)
+    # setting physical parameters
+    M_init = np.random.randn(3) # initial magnetization, shape (3,)
+    M_init = M_init / (np.linalg.norm(M_init) + 1e-12) # normalize initial magnetization
+
+    t_max = 10 # simulation time (seconds)
+    dt = 0.001 # time step (seconds)
+    gamma = 2 * np.pi * 42.58e6 # proton gyromagnetic ratio (rad/s/T)
+
+    T1 = np.random.uniform(2, 5.0) # set T1 relaxation (seconds)
+    T2 = np.random.uniform(0.6, 2.0) # set T2 relaxation (seconds)
+
+    M0 = 1.0 # equilibrium magnetization
+
+    B0  = np.random.uniform(1.5, 3.0) # B0 static magnetic field (T)
+    dB0 = np.random.uniform(-0.1, 0.1) # B0 inhomogeneity (T)
 
     return (M_init, t_max, dt, gamma, T1, T2, M0, B0, dB0)
 
@@ -55,14 +67,14 @@ def compare(test_id=0):
     print(f'================TEST CASE {test_id}================')
     print(f'Parameters')
     print(f'Initial Magnetization: {M_init}')
-    print(f'Simulation Time: {t_max} ms')
-    print(f'Time step: {dt}')
-    print(f'Gyromagnetic Ratio: {gamma}')
-    print(f'T1 Relaxation: {T1}')
-    print(f'T2 Relaxation: {T2}')
+    print(f'Simulation Time: {t_max} s')
+    print(f'Time step: {dt} s')
+    print(f'Gyromagnetic Ratio: {gamma} rad/s/T')
+    print(f'T1 Relaxation: {T1} s')
+    print(f'T2 Relaxation: {T2} s')
     print(f'Equilibrium Magnetization: {M0}')
-    print(f'Static Field: {B0}')
-    print(f'B0 Inhomogeneity: {dB0}')
+    print(f'Static Field: {B0} T')
+    print(f'B0 Inhomogeneity: {dB0} T')
     print('____________________________________________________')
 
     B_field = np.array([0.0, 0.0, float(B0) + float(dB0)])
@@ -96,7 +108,6 @@ def compare(test_id=0):
 
     visual_solution(res)
     visual_error(res)
-
 
     return res
 
@@ -146,6 +157,8 @@ def visual_solution(res):
         ax3d.remove()
         ax3d = fig1.add_subplot(2, 3, col + 4, projection='3d')
         ax3d.plot(M[:, 0], M[:, 1], M[:, 2], color=linestyle[0], alpha=0.8)
+        ax3d.plot(M_analytical[:, 0], M_analytical[:, 1], M_analytical[:, 2], color='k', alpha=0.8)
+
         ax3d.scatter(M[0, 0], M[0, 1], M[0, 2], 
                     color='k', s=50, label='Start')
         ax3d.scatter(M[-1, 0], M[-1, 1], M[-1, 2],
@@ -230,10 +243,6 @@ def visual_error(res):
     plt.tight_layout()
     plt.show()
 
-def convergence_test():
-    #convergence testing: check for which time steps makes the solution converge
-    pass
-
 if __name__ == "__main__":
 
     # Physical parameters
@@ -249,6 +258,6 @@ if __name__ == "__main__":
     # dt = 1e-8          # 10 ns step
 
     compare0 = compare()
-    compare1 = compare(1)
-    compare2 = compare(2)
+    # compare1 = compare(1)
+    # compare2 = compare(2)
     
