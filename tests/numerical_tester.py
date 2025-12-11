@@ -43,19 +43,6 @@ def gen_test_case(test_id = 0):
 
     np.random.seed(123 + test_id)
 
-<<<<<<< HEAD
-    # physical parameters
-    M_init = np.random.randn(3)
-    M_init = M_init / (np.linalg.norm(M_init) + 1e-12)
-    t_max = 10
-    dt = 0.1
-    gamma = 2 * np.pi * 42.58e6 # rad/s/T for proton
-    T1 = np.random.uniform(2, 5.0)
-    T2 = np.random.uniform(0.6, 2.0)
-    M0 = 1.0 
-    B0  = np.random.uniform(2.0, 4.0)
-    dB0 = np.random.uniform(-0.1, 0.1)
-=======
     # setting physical parameters
     M_init = np.random.randn(3) # initial magnetization, shape (3,)
     M_init = M_init / (np.linalg.norm(M_init) + 1e-12) # normalize initial magnetization
@@ -71,7 +58,6 @@ def gen_test_case(test_id = 0):
 
     B0  = np.random.uniform(1.5, 3.0) # B0 static magnetic field (T)
     dB0 = np.random.uniform(-0.1, 0.1) # B0 inhomogeneity (T)
->>>>>>> e0fcf84edb9b0d6cfdd687679e65462b637d25da
 
     return (M_init, t_max, dt, gamma, T1, T2, M0, B0, dB0)
 

@@ -1,0 +1,12 @@
+Folder contains visualization images for the model stored at NEURAL_ODE_UDE_1 (which is apparently not the NeuralUDE):
+
+model = NeuralBlochVoxelUDE(
+        hidden_dim=128,
+        num_layers=3,
+        use_residual=True,
+        residual_scale=0.3,  # a bit gentler than 0.5
+        n_substeps=1,        # start simple; bump to 2 if needed
+        use_time_input=True,
+    ).to(device)
+
+Model as of 2025-12-11
