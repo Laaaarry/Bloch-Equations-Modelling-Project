@@ -4,7 +4,7 @@
   "n_train": 4000,
   "n_val": 500,
   "n_test": 500,
-  "seed": 2025,
+  "seed": 2030,
   "per_sample_t": false,
   "rf_families": [
     "rect",
@@ -12,5 +12,6 @@
     "gaussian",
     "windowed_sinc",
     "trapezoid"
-  ]
+  ],
+  "single_spin": true
 }
