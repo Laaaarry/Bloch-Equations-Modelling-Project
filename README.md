@@ -23,7 +23,7 @@ Pipeline evaluation was done using the synthetic dataset generated with `BlochSi
 Run the following commands to create a Python environment. 
 
 ```
-conda create -n BLOCH python=3.9
+conda create -n BLOCH python=3.12.10
 conda activate BLOCH
 ```
 Install the dependencies using the requirements file.
