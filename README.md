@@ -40,3 +40,8 @@ cd Bloch-Equations-Modelling-Project
 ## Usage
 
 Navigate to the [Project_Pipeline.ipynb](Project_Pipeline.ipynb) file to see the fully integrated pipeline with examples. This notebook packages all of the pipeline functionalities, including synthetic data generation, neural model definitions, training loops, numerical methods, inference utilities, and comparisons of the different solvers. 
+
+## References
+ChatGPT was used to generate some supporting code for the Neural ODEs, Training Loops, and Inference. 
+
+[1] ChatGPT. (GPT-4). OpenAI. Accessed: Sep. 26, 2023. [Online]. Available: https://chat.openai.com/chat
