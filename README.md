@@ -8,13 +8,13 @@ The Bloch Equations are a set of coupled, first-order, nonlinear ODEs that model
 ### Overview of Neural Network Architecture
 The two neural architectures investigated include a traditional Neural ODE and a Neural Universal Differential Equation (UDE), as shown in Figure 1-2. Both models use the initial magnetization $M_0$, time $t$, control inputs $u$ (RF pulses), and physical parameters $p$ ($T_1, T_2, ∆B_0$) as inputs and both models uses a fourth-order Runge-Kutta integrator. These models were trained on a ground-truth dataset produced using `BlochSimulator`, a Python-based synthetic data generator adapted from the [Bloch Simulator](https://www.drcmr.dk/BlochSimulator/) tool made by the Danish Research Centre for Magnetic Resonance. Both single-spin and multi-spin data was generated to build this pipeline. For each of the datasets, 4000 trajectories were allocated to training, 500 to validation, and 500 to testing. Each data sample provided the RF pulse shapes, flip angles, RF amplitude, phase shift, $T_1$ and $T_2$ relaxation time constants, and field homogeneities $dB_0$.
 
-![Neural ODE](Images\neuralODE.png)
+![Neural ODE](Images/neuralODE.png)
 *<b>Figure 1:</b> Neural ODE architecture with residual connections* \
-The Neural ODE in Figure 1 is a data-driven multilayer perceptron with residual connections that learns the 3D Bloch Equation **dM/dt = f_θ(M, t, u(t), p)** and obtains the net magnetization solution through integration. 
+The Neural ODE in Figure 1 is a data-driven multilayer perceptron with residual connections that learns the 3D Bloch Equation $\frac{d\mathbf{M}}{dt} = f_\theta(\mathbf{M}, t, \mathbf{u}(t), \mathbf{p})$ and obtains the net magnetization solution through integration. 
 
-![Neural UDE](Images\neuralUDE.png)
+![Neural UDE](Images/neuralUDE.png)
 *<b>Figure 2:</b> Neural UDE architecture* \
-The Neural UDE in Figure 2 is a physics-informed model that contains a learned correction term, governed by the 3D equation **dM/dt = f_Bloch(M(t), u(t), p) + Δf_θ(M(t), t, u(t), p)**. In addition, this model has coherence terms $c(t)$ that accounts for the gradual dephasing of the individual voxel spins over time. Furthermore, to prevent underfitting, the architecture design employs 256 neurons per layer.
+The Neural UDE in Figure 2 is a physics-informed model that contains a learned correction term, governed by the 3D equation $\frac{d\mathbf{M}}{dt} = f_{Bloch}(\mathbf{M}(t), \mathbf{u}(t), \mathbf{p})+Δf_{\theta}\left(\mathbf{M}(t), t, \mathbf{u}(t), \mathbf{p}\right)$. In addition, this model has coherence terms $c(t)$ that accounts for the gradual dephasing of the individual voxel spins over time. Furthermore, to prevent underfitting, the architecture design employs 256 neurons per layer.
 
 ### Pipeline Evaluation
 Pipeline evaluation was done using the synthetic dataset generated with `BlochSimulator` and the analytical solution, which is available in the time-invariant, no RF pulse case. The average mean squared error (MSE), component-wise MSE, and runtime of the numerical methods and neural approaches were compared to the analytical solution and synthetic datasets. 
