@@ -6,34 +6,25 @@
 # ~y(M x B) is precession term, the vector is relaxation term
 
 # basic euler's and runge-kutta 4th order method attempt, time-invariant B
-
 import numpy as np
 
 def bloch_ode(t, M, gamma, T1, T2, M0, B):
-    # type - floats
-    # t = time
-    # gamma = gyromagnetic ratio (~y)
-    # T1, T2 = relaxation times
-    # M0 = equilibrium magnetization
-    # type - arrays
-    # M = M(t) = magnetization vector - 3 components
-    # B = B(t) = magnetic field - 3 components
+    
+    # M.shape = (N, 3) = (# spins, directions)
 
-    # t isn't used since for this case, we assume B doesn't change with time
-
-    # intermediate variables:
-    Mx, My, Mz = M
-    Bx, By, Bz = B
+    # magnetizations in each direction
+    Mx = M[:, 0]
+    My = M[:, 1]
+    Mz = M[:, 2]
 
     # precession term: ~y * (M x B)
     precession_term = gamma * np.cross(M, B) # thank you numpy
 
     # relaxation term: - [Mx / T2, My, / T2, (Mz - M0) / T1]
-    relaxation_term = np.array([
-        -Mx / T2,
-        -My / T2,
-        -(Mz - M0) / T1
-    ])
+    relaxation_term = np.empty_like(M)
+    relaxation_term[:, 0] = - Mx / T2
+    relaxation_term[:, 1] = - My / T2
+    relaxation_term[:, 2] = - (Mz - M0) / T1
 
     # return result
     return precession_term + relaxation_term
@@ -42,7 +33,6 @@ def euler_step(f, t, M, dt, *args):
     # 1 euler step
     # dt is time step
     return M + dt * f(t, M, *args)
-
 
 def rk4_step(f, t, M, dt, *args):
     # 1 rk4 step
@@ -65,18 +55,15 @@ def rkf_step(f, t, M, dt, *args):
     order_4 = M + dt*(25*k1/216 + 1408*k3/2565 + 2197*k4/4104 - 1*k5/5)
     err = np.abs(order_5-order_4) #error to calculate new time step
 
-    return order_4, err
+    return order_5, err
 
 def simulate_bloch(method, M0_vec, t_max, dt, gamma, T1, T2, M0, B):
-    #Simulate Bloch equations using Euler or RK4.
-    # method: function = "euler_step" or "rk4_step"
-    # M0: array/vector --> [Mx0, My0, Mz0]
-    # t_max: float --> simulation time (s)
-    # dt: float --> time step (s)
-
     t_points = np.arange(0, t_max + dt, dt)
-    M = np.zeros((len(t_points), 3))
-    M[0] = M0_vec
+
+    N = M0_vec.shape[0] # number of spins
+
+    M = np.zeros((len(t_points), N, 3)) # solution magnetizations
+    M[0] = M0_vec # set initial value 
 
     for i in range(len(t_points) - 1):
         t = t_points[i]
@@ -90,7 +77,6 @@ def bloch_rkf(method, M0_vec, t_max, dt, gamma, T1, T2, M0, B, err_tol= 1e-12):
 
     t_points = [t_cur]
     M_points = [M0_vec]
-    reject = 0 
 
     while t_cur < t_max: 
         M_try, err = method(bloch_ode, t_cur, M_cur, dt, gamma, T1, T2, M0, B)
@@ -100,8 +86,6 @@ def bloch_rkf(method, M0_vec, t_max, dt, gamma, T1, T2, M0, B, err_tol= 1e-12):
             M_cur = M_try
             t_points.append(t_cur)
             M_points.append(M_cur)
-        reject +=1 
-        if err_cur != 0:
-            dt = min(0.9*dt*(err_tol/err_cur)**0.2, t_max-t_cur) #calculate new step size 
-    print(reject)
+        else:
+            dt = min(0.9*dt*(err_tol/err_cur + 1e-20)**0.2, t_max-t_cur) #calculate new step size 
     return np.array(t_points), np.array(M_points)
