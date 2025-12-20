@@ -17,7 +17,7 @@ The Neural ODE in Figure 1 is a data-driven multilayer perceptron with residual 
 The Neural UDE in Figure 2 is a physics-informed model that contains a learned correction term, governed by the 3D equation $\frac{d\mathbf{M}}{dt} = f_{Bloch}(\mathbf{M}(t), \mathbf{u}(t), \mathbf{p})+Δf_{\theta}\left(\mathbf{M}(t), t, \mathbf{u}(t), \mathbf{p}\right)$. In addition, this model has coherence terms $c(t)$ that accounts for the gradual dephasing of the individual voxel spins over time. Furthermore, to prevent underfitting, the architecture design employs 256 neurons per layer.
 
 ### Pipeline Evaluation
-Pipeline evaluation was done using the synthetic dataset generated with `BlochSimulator` and the analytical solution, which is available in the time-invariant, no RF pulse case. The average mean squared error (MSE), component-wise MSE, and runtime of the numerical methods and neural approaches were compared to the analytical solution and synthetic datasets. 
+Pipeline evaluation was done using the synthetic dataset generated with `BlochSimulator` and the analytical solution, which is available in the time-invariant, no RF pulse case. The average mean squared error (MSE), component-wise MSE, and runtime of the numerical methods and neural approaches were compared to the analytical solution and synthetic datasets. The numerical methods used include the Euler's, 4th order Runge-Kutta, and Runge-Kutta-Fehlberg methods.
 
 ## Setup 
 Run the following commands to create a Python environment. 
