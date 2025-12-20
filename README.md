@@ -8,11 +8,11 @@ The Bloch Equations are a set of coupled, first-order, nonlinear ODEs that model
 ### Overview of Neural Network Architecture
 The two neural architectures investigated include a traditional Neural ODE and a Neural Universal Differential Equation (UDE), as shown in Figure 1-2. Both models use the initial magnetization $M_0$, time $t$, control inputs $u$ (RF pulses), and physical parameters $p$ ($T_1, T_2, ∆B_0$) as inputs and both models uses a fourth-order Runge-Kutta integrator. These models were trained on a ground-truth dataset produced using `BlochSimulator`, a Python-based synthetic data generator adapted from the [Bloch Simulator](https://www.drcmr.dk/BlochSimulator/) tool made by the Danish Research Centre for Magnetic Resonance. Both single-spin and multi-spin data was generated to build this pipeline. For each of the datasets, 4000 trajectories were allocated to training, 500 to validation, and 500 to testing. Each data sample provided the RF pulse shapes, flip angles, RF amplitude, phase shift, $T_1$ and $T_2$ relaxation time constants, and field homogeneities $dB_0$.
 
-![Neural ODE](neuralODE.png)
+![Neural ODE](Images\neuralODE.png)
 *<b>Figure 1:</b> Neural ODE architecture with residual connections* \
 The Neural ODE in Figure 1 is a data-driven multilayer perceptron with residual connections that learns the 3D Bloch Equation $\frac{d\mathbf{M}}{dt} = f_\theta(\mathbf{M}, t, \mathbf{u}(t), \mathbf{p})$ and obtains the net magnetization solution through integration. 
 
-![Neural UDE](neuralUDE.png)
+![Neural UDE](Images\neuralUDE.png)
 *<b>Figure 2:</b> Neural UDE architecture* \
 The Neural UDE in Figure 2 is a physics-informed model that contains a learned correction term, governed by the 3D equation $\frac{d\mathbf{M}}{dt}
 =\mathbf{f}_{\mathrm{Bloch}}\left(\mathbf{M}(t), \mathbf{u}(t), \mathbf{p}\right)
