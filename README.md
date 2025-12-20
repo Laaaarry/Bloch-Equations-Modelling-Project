@@ -10,14 +10,11 @@ The two neural architectures investigated include a traditional Neural ODE and a
 
 ![Neural ODE](Images\neuralODE.png)
 *<b>Figure 1:</b> Neural ODE architecture with residual connections* \
-The Neural ODE in Figure 1 is a data-driven multilayer perceptron with residual connections that learns the 3D Bloch Equation $\frac{d\mathbf{M}}{dt} = f_\theta(\mathbf{M}, t, \mathbf{u}(t), \mathbf{p})$ and obtains the net magnetization solution through integration. 
+The Neural ODE in Figure 1 is a data-driven multilayer perceptron with residual connections that learns the 3D Bloch Equation **dM/dt = f_θ(M, t, u(t), p)** and obtains the net magnetization solution through integration. 
 
 ![Neural UDE](Images\neuralUDE.png)
 *<b>Figure 2:</b> Neural UDE architecture* \
-The Neural UDE in Figure 2 is a physics-informed model that contains a learned correction term, governed by the 3D equation $\frac{d\mathbf{M}}{dt}
-=\mathbf{f}_{\mathrm{Bloch}}\left(\mathbf{M}(t), \mathbf{u}(t), \mathbf{p}\right)
-+
-\Delta f_{\theta}\left(\mathbf{M}(t), t, \mathbf{u}(t), \mathbf{p}\right)$. In addition, this model has coherence terms $c(t)$ that accounts for the gradual dephasing of the individual voxel spins over time. Furthermore, to prevent underfitting, the architecture design employs 256 neurons per layer.
+The Neural UDE in Figure 2 is a physics-informed model that contains a learned correction term, governed by the 3D equation **dM/dt = f_Bloch(M(t), u(t), p) + Δf_θ(M(t), t, u(t), p)**. In addition, this model has coherence terms $c(t)$ that accounts for the gradual dephasing of the individual voxel spins over time. Furthermore, to prevent underfitting, the architecture design employs 256 neurons per layer.
 
 ### Pipeline Evaluation
 Pipeline evaluation was done using the synthetic dataset generated with `BlochSimulator` and the analytical solution, which is available in the time-invariant, no RF pulse case. The average mean squared error (MSE), component-wise MSE, and runtime of the numerical methods and neural approaches were compared to the analytical solution and synthetic datasets. 
